@@ -36,6 +36,12 @@ def encrypt_message(K, message):
     plaintext = message.encode("utf8")
     
     ## YOUR CODE HERE
+    
+    aes = Cipher("aes-128-gcm") # Initialize AES-GCM with 128 bit keys
+    iv = urandom(16)
+    # Encryption using AES-GCM returns a ciphertext and a tag
+
+    ciphertext, tag = aes.quick_gcm_enc(K, iv, plaintext)
 
     return (iv, ciphertext, tag)
 
@@ -45,8 +51,12 @@ def decrypt_message(K, iv, ciphertext, tag):
         In case the decryption fails, throw an exception.
     """
     ## YOUR CODE HERE
+    
+    # Decrytion using AES-GCM
+    aes = Cipher("aes-128-gcm")
+    plain = aes.quick_gcm_dec(K, iv, ciphertext, tag)
 
-    return plain.encode("utf8")
+    return plain.decode("utf8")
 
 #####################################################
 # TASK 3 -- Understand Elliptic Curve Arithmetic
@@ -100,8 +110,29 @@ def point_add(a, b, p, x0, y0, x1, y1):
     Return the point resulting from the addition. Raises an Exception if the points are equal.
     """
 
-    # ADD YOUR CODE BELOW
-    xr, yr = None, None
+    # by fermat's little theorem a^(p-1) = 1  =>  a^(p-2) * a = 1 
+    # a^-1 = a^(p-2)
+
+    # these two if statements check if inf + P = P + inf = P occur
+    if x0 == None and y0 == None and x1 != None and y1 != None:
+        return (x1,y1)
+
+    if x0 != None and y0 != None and x1 == None and y1 == None:
+        return (x0,y0)
+
+    # raise exception if the two points are equal
+    if(x0==x1 and y0 == y1):
+        raise Exception("points are equal")
+    
+    
+    # normal point addition for (x0,y0) + (x1,y1) = (x,y)
+    lam = ((y1-y0) * Bn(x1-x0).mod_pow(p-2, p) ) %p
+    xr = (lam*lam - x0 - x1) % p
+    yr = (lam* (x0-x1) - y0) % p
+    
+    
+    
+    # xr, yr = None, None
     
     return (xr, yr)
 
@@ -118,8 +149,14 @@ def point_double(a, b, p, x, y):
     """  
 
     # ADD YOUR CODE BELOW
-    xr, yr = None, None
-
+    # xr, yr = None, None
+    #using Fermat's little theorem 
+    # (2*yp)^-1 = (2*yp)^(p-2)
+    
+    lam  = ((3*x*x + a ) * Bn(2*y).mod_pow(p-2, p)) %p
+    xr = (lam*lam - x -x )%p
+    yr = (lam * (x-xr) - y )%p
+    
     return xr, yr
 
 def point_scalar_multiplication_double_and_add(a, b, p, x, y, scalar):
@@ -140,8 +177,10 @@ def point_scalar_multiplication_double_and_add(a, b, p, x, y, scalar):
     P = (x, y)
 
     for i in range(scalar.num_bits()):
-        pass ## ADD YOUR CODE HERE
-
+        # pass ## ADD YOUR CODE HERE
+        if (scalar>>i) & 1== 1:
+            Q = point_add(a, b, p, Q[0], Q[1], x, y)
+        P = point_double(a, b, p, x, y)
     return Q
 
 def point_scalar_multiplication_montgomerry_ladder(a, b, p, x, y, scalar):
@@ -164,10 +203,14 @@ def point_scalar_multiplication_montgomerry_ladder(a, b, p, x, y, scalar):
     """
     R0 = (None, None)
     R1 = (x, y)
-
+    
     for i in reversed(range(0,scalar.num_bits())):
-        pass ## ADD YOUR CODE HERE
-
+        if (scalar >> i) & 1 == 0:
+            R1 = point_add(a, b, p, R0[0], R1[1], R1[0], R1[1])
+            R0 = point_double(a, b, p, R0[0], R0[0])
+        else:
+            R0 = point_add(a, b, p, R0[0], R1[1], R1[0], R1[1])
+            R1 = point_double(a, b, p, R1[0], R1[0])
     return R0
 
 
