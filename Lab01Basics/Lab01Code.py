@@ -319,7 +319,7 @@ def dh_encrypt(pub, message, aliceSig = None):
 
     #ciphertext
     return (G, pub_enc, iv, encMessage, tag)
-
+    # test
 
 def dh_decrypt(priv, ciphertext, aliceVer = None):
     """ Decrypt a received message encrypted using your public key,
