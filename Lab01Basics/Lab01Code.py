@@ -86,7 +86,7 @@ def is_point_on_curve(a, b, p, x, y):
     assert isinstance(b, Bn)
     assert isinstance(p, Bn) and p > 0
     assert (isinstance(x, Bn) and isinstance(y, Bn)) \
-           or (x == None and y == None)
+           or (x is None and y is None)
 
     if ((x is None) and (y is None)):
         return True
@@ -116,7 +116,7 @@ def point_add(a, b, p, x0, y0, x1, y1):
 
     #verify both points are on the curve
     if not is_point_on_curve(a, b, p, x0, y0) or not is_point_on_curve(a, b, p, x1, y1):
-        raise Exception("Both points are not on the curve")
+        raise Exception("A point is not on the curve")
 
     # these two if statements check if inf + P = P + inf = P occur
     if x0 is None and y0 is None and x1 is not None and y1 is not None:
@@ -161,9 +161,12 @@ def point_double(a, b, p, x, y):
     """
     # ADD YOUR CODE BELOW
     # xr, yr = None, None
+
     if x is None and y is None:
         return (None, None)
 
+    if x is None or y is None:
+        raise Exception("Impossible situation")
     #using Fermat's little theorem
     # (2*yp)^-1 = (2*yp)^(p-2)
 
@@ -190,21 +193,17 @@ def point_scalar_multiplication_double_and_add(a, b, p, x, y, scalar):
     Q = (None, None)
     P = (x, y)
 
+    # inf + inf = inf
+    if x is None and y is None:
+        return (None, None)
+
+    if x is None or y is None:
+        raise Exception("Impossible situation")
+
+
     # print([1 if scalar.is_bit_set(i) else 0 for i in range(scalar.num_bits())])
     for i in range(scalar.num_bits()):
         if (scalar.is_bit_set(i)):
-
-            # separate case for when points to be added are equal
-            pointsEqual = False
-            if (Q[0] is None and Q[1] is None):
-                if(x is None and y is None):
-                    pointsEqual = True
-            else:
-                if(Q[0] == x and Q[1] == y):
-                    pointsEqual = True
-            if pointsEqual:
-                Q = point_double(a, b, p, Q[0], Q[1])
-
             Q = point_add(a, b, p, Q[0], Q[1], P[0], P[1])
         else:
             pass
@@ -234,6 +233,7 @@ def point_scalar_multiplication_montgomerry_ladder(a, b, p, x, y, scalar):
     """
     R0 = (None, None)
     R1 = (x, y)
+
 
     for i in reversed(range(0,scalar.num_bits())):
         if (scalar.is_bit_set(i)):
