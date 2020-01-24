@@ -93,13 +93,7 @@ def is_point_on_curve(a, b, p, x, y):
 
     lhs = y.pow(2,p)
     rhs = (x.pow(3,p).int_add( a.int_mul(x) ) + b) %p
-    if lhs == rhs:
-        return True
-    else:
-        return False
-
-
-    return False
+    return (lhs == rhs)
 
 
 def point_add(a, b, p, x0, y0, x1, y1):
@@ -204,6 +198,7 @@ def point_scalar_multiplication_double_and_add(a, b, p, x, y, scalar):
     # print([1 if scalar.is_bit_set(i) else 0 for i in range(scalar.num_bits())])
     for i in range(scalar.num_bits()):
         if (scalar.is_bit_set(i)):
+
             Q = point_add(a, b, p, Q[0], Q[1], P[0], P[1])
         else:
             pass
@@ -308,31 +303,52 @@ def dh_encrypt(pub, message, aliceSig = None):
     """
     G, priv_dec, pub_enc = dh_get_key()
 
-    # private is d, scalar   priv_enc
-    # public is Q,G points on curve Q = d*G   pub_enc = priv_dec * G.generator()
+    # private is (d, scalar)   priv_enc
+    # public key is Q, point on curve Q = d*G   pub_enc = priv_dec * G.generator()
 
 
-    shared_key = priv_dec * pub
+    # export to binary string to avoid some errors
+    # key needs to be 16 bits long for the aes
+    shared_key = (priv_dec * pub).export()[:16]
+    # shared_key = pub.pt_mul(priv_dec)
 
     #encrypt message
-    (iv, ciphertext, tag) = encrypt_message(shared_key, message)
 
-    #ciphertext
-    return (G, pub_enc, iv, encMessage, tag)
-    # test
+    (iv, encMessage, tag) = encrypt_message(shared_key, message)
+
+    # create signature
+    signature = None
+    if aliceSig is not None:
+        signature = ecdsa_sign(G, priv_dec, message)
+
+
+
+    return (pub_enc, iv, encMessage, tag, signature)
+
+
 
 def dh_decrypt(priv, ciphertext, aliceVer = None):
     """ Decrypt a received message encrypted using your public key,
     of which the private key is provided. Optionally verify
     the message came from Alice using her verification key."""
 
-    (G, pub_enc, iv, encMessage, tag) = ciphertext
+    (pub_enc, iv, encMessage, tag, signature) = ciphertext
 
-    shared_key = priv * pub_enc
+    shared_key = (priv * pub_enc).export()[:16]
 
-    message = decrypt_message(shared_key, iv, encMessage, tag)
 
-    return message
+    # decrypt message
+    try:
+        message = decrypt_message(shared_key, iv, encMessage, tag)
+    except:
+        raise Exception("Incorrect ciphertext/ priv key")
+    #verify that message hasnt been tampered with by checking the signature
+    isSigValid = None
+    if aliceVer is not None and signature is not None:
+        isSigValid = ecdsa_verify(EcGroup(), pub_enc, message, signature)
+
+
+    return (message, isSigValid)
 
 
 
@@ -341,14 +357,95 @@ def dh_decrypt(priv, ciphertext, aliceVer = None):
 #  What is your test coverage? Where is it missing cases?
 #  $ py.test-2.7 --cov-report html --cov Lab01Code Lab01Code.py
 
-# def test_encrypt():
-#     assert False
-#
-# def test_decrypt():
-#     assert False
-#
-# def test_fails():
-#     assert False
+def test_encrypt():
+    # dh_encrypt(pub, message, aliceSig = None):
+
+    # get a pub
+    (G, priv_dec, pub_enc) =  dh_get_key()
+
+    message = "I am the Crypto man!"
+
+
+    #without a signature
+    (pub_enc2, iv, encMessage, tag, signature) = dh_encrypt(pub_enc, message, None)
+
+    # copied from the Lab01Tests.py file for task 1
+    assert len(iv) == 16
+    assert len(encMessage) == len(message)
+    assert len(tag) == 16
+
+    # with a signature
+    (pub_enc2, iv, encMessage, tag, signature) = dh_encrypt(pub_enc, message, True)
+
+    assert len(iv) == 16
+    assert len(encMessage) == len(message)
+    assert len(tag) == 16
+
+    # # assert signature are valid
+    # if signature is not None:
+    #     assert ecdsa_verify(G, pub_enc, message, signature)
+
+
+
+
+def test_decrypt():
+
+    (G, priv_dec, pub_enc) = dh_get_key()
+
+    message = "I am the Crypto man!"
+
+    #without signature
+    (pub_enc2, iv, encMessage, tag, signature) = dh_encrypt(pub_enc, message, None)
+    (plaintext, isSigValid) = dh_decrypt(priv_dec, (pub_enc2, iv, encMessage, tag, signature), None )
+
+    assert message == plaintext
+    assert isSigValid is None
+
+    # with signature now
+    (pub_enc2, iv, encMessage, tag, signature) = dh_encrypt(pub_enc, message, True)
+    (plaintext, isSigValid) = dh_decrypt(priv_dec, (pub_enc2, iv, encMessage, tag, signature), True )
+
+    assert message == plaintext
+
+    # assert signature are valid
+    assert isSigValid
+
+def test_fails():
+    from pytest import raises
+
+
+    message = "I am the Crypto man!"
+    message2 = "I am an imposter!"
+
+    (G, priv_dec, pub_enc) = dh_get_key()
+    (G, priv_dec2, pub_enc2) = dh_get_key()
+
+    # def dh_decrypt(priv, ciphertext, aliceVer = None):
+    # pub message aliceVer
+
+    #enc(message)
+    (pub_enc3, iv, encMessage, tag, signature)  = dh_encrypt(pub_enc, message, True)
+
+    #enc(message2)
+    (pub_enc4, iv2, encMessage2, tag2, signature2)  = dh_encrypt(pub_enc2, message2, True)
+
+
+    #wrong priv key
+    with raises(Exception) as excinfo:
+        (plaintext, isSigValid)  = dh_decrypt(priv_dec2, (pub_enc4, iv, encMessage, tag, signature), True )
+    assert 'Incorrect ciphertext/ priv key' in str(excinfo.value)
+
+    # wrong ciphertext
+    with raises(Exception) as excinfo:
+        (plaintext, isSigValid)  = dh_decrypt(priv_dec2, (pub_enc4, iv, encMessage2, tag, signature), True )
+    assert 'Incorrect ciphertext/ priv key' in str(excinfo.value)
+
+    # wrong signature
+    (plaintext, isSigValid)  = dh_decrypt(priv_dec, (pub_enc3, iv, encMessage, tag, signature2), True )
+    assert isSigValid == False
+
+
+    # assert False
 
 #####################################################
 # TASK 6 -- Time EC scalar multiplication
