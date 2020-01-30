@@ -132,7 +132,27 @@ def mix_client_one_hop(public_key, address, message):
     private_key = G.order().random()
     client_public_key  = private_key * G.generator()
 
-    ## ADD CODE HERE
+
+    shared_element = private_key * public_key
+
+    key_material = sha512(shared_element.export()).digest()
+
+    # Use different parts of the shared key for different operations
+    hmac_key = key_material[:16]
+    address_key = key_material[16:32]
+    message_key = key_material[32:48]
+
+    iv = b"\x00"*16
+
+    address_cipher = aes_ctr_enc_dec(address_key, iv, address_plaintext)
+    message_cipher = aes_ctr_enc_dec(message_key, iv, message_plaintext)
+
+    # calculate hmac on the cipher text
+    
+    h = Hmac(b"sha512", hmac_key)        
+    h.update(address_cipher)
+    h.update(message_cipher)
+    expected_mac = h.digest()[:20]
 
     return OneHopMixMessage(client_public_key, expected_mac, address_cipher, message_cipher)
 
