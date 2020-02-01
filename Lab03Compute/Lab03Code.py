@@ -32,16 +32,29 @@ def keyGen(params):
    (G, g, h, o) = params
    
    # ADD CODE HERE
-
+   # private key is x
+   # public key is g^x
+   # size of group is G.order() = o
+   priv = o.random()
+   pub = priv * g
+   # mod o | p?
+   
    return (priv, pub)
 
 def encrypt(params, pub, m):
     """ Encrypt a message under the public key """
     if not -100 < m < 100:
         raise Exception("Message value to low or high.")
-
+    (G, g, h, o) = params
    # ADD CODE HERE
-
+    k = o.random()
+    #( g^k, (g^x)^k  * h^m )
+    
+    # mod p?
+    firstPart = k * g
+    secondPart = k * pub + m* h 
+    
+    c = (firstPart, secondPart)
     return c
 
 def isCiphertext(params, ciphertext):
@@ -74,8 +87,11 @@ def decrypt(params, priv, ciphertext):
     """ Decrypt a message using the private key """
     assert isCiphertext(params, ciphertext)
     a , b = ciphertext
-
+    (G, g, h, o) = params
    # ADD CODE HERE
+   
+   # log_h ( b * (a^x)^-1 )
+    hm = b + (-1*(priv*a))
 
     return logh(params, hm)
 
@@ -92,7 +108,13 @@ def add(params, pub, c1, c2):
     assert isCiphertext(params, c2)
 
    # ADD CODE HERE
-
+    (a1,b1) = c1
+    (a2,b2) = c2
+   
+    # E(c1 + c2 ) =  
+    # E(m1 +m2 ; k1 +k2 ) = (a1*a2 , b1*b2)
+    c3 = (a1+a2, b1+b2)
+   
     return c3
 
 def mul(params, pub, c1, alpha):
@@ -101,7 +123,10 @@ def mul(params, pub, c1, alpha):
     assert isCiphertext(params, c1)
 
    # ADD CODE HERE
-
+    (a1,b1) = c1
+    #c* E(m0,k0)
+    #E(cm0 ; ck 0 ) = ((a 0 ) c , (b 0 ) c )
+    c3 = (alpha * a1, alpha *b1 )
     return c3
 
 #####################################################
@@ -114,7 +139,19 @@ def groupKey(params, pubKeys=[]):
     (G, g, h, o) = params
 
    # ADD CODE HERE
-
+    #Private keys: x 1 , ..., x n
+    #Public key: g^(x1+...+xn)
+    #
+   
+    if len(pubKeys) >0:
+        pub = pubKeys[0]
+        if len(pubKeys) >1:
+            for i in pubKeys[1:]:
+                pub += i
+    else:
+        return []        
+    
+    
     return pub
 
 def partialDecrypt(params, priv, ciphertext, final=False):
@@ -123,11 +160,24 @@ def partialDecrypt(params, priv, ciphertext, final=False):
     assert isCiphertext(params, ciphertext)
     
     # ADD CODE HERE
+    (G, g, h, o) = params
+    
+
+    # full decryption is m = b / a^x == b / a^priv
+    # partial decryption, a stays the same and 
+    
+    #hm = b + (-1*(priv*a))
+
+
+    (a,b) = ciphertext
+
+    b1 = b + (-1*(priv*a))
+    
 
     if final:
         return logh(params, b1)
     else:
-        return a1, b1
+        return a, b1
 
 #####################################################
 # TASK 4 -- Actively corrupt final authority, derives
@@ -143,7 +193,21 @@ def corruptPubKey(params, priv, OtherPubKeys=[]):
     (G, g, h, o) = params
     
    # ADD CODE HERE
-
+   
+    # choose the corrupt key to be g^(-x1-x2-x3-x4) * g^priv    where x1,2,3,4 are in the otherpubkeys
+    # that way only the message can only be decrypted with the owner of the malicious private key
+    
+    pub = priv * g
+    
+    if len(OtherPubKeys) >0:
+        pub += -1 * OtherPubKeys[0]
+        if len(OtherPubKeys) >1:
+            for i in OtherPubKeys[1:]:
+                pub -= i
+    else:
+        return []        
+    
+   
     return pub
 
 #####################################################
@@ -157,8 +221,20 @@ def encode_vote(params, pub, vote):
         zero and the votes for one."""
     assert vote in [0, 1]
 
-   # ADD CODE HERE
-
+    # return E(1), E(0) if voted for 0
+    # return E(0), E(1) if voted for 1
+    
+    # avoid stupid errors
+    v0 = encrypt(params, pub, 1-vote) # E(0)
+    v1 = encrypt(params, pub, vote) # E(1)
+    
+    if vote == 0:
+        v0 = encrypt(params, pub, 1-vote) # E(0)
+        v1 = encrypt(params, pub, vote) # E(1)
+    elif vote == 1:
+       v0 = encrypt(params, pub, 1-vote) # E(0)
+       v1 = encrypt(params, pub, vote) # E(1)
+    
     return (v0, v1)
 
 def process_votes(params, pub, encrypted_votes):
@@ -166,8 +242,15 @@ def process_votes(params, pub, encrypted_votes):
         to sum votes for zeros and votes for ones. """
     assert isinstance(encrypted_votes, list)
     
-   # ADD CODE HERE
-
+    # sum all the votes 
+    
+    total = encrypted_votes[0] 
+    
+    for (i,j) in encrypted_votes[1:]:
+        total = ( add(params, pub, total[0], (i) ), add(params, pub, total[1], (j)) )
+    
+    (tv0, tv1) = total
+    
     return tv0, tv1
 
 def simulate_poll(votes):
@@ -217,7 +300,16 @@ def simulate_poll(votes):
 # What is the advantage of the adversary in guessing b given your implementation of 
 # Homomorphic addition? What are the security implications of this?
 
-""" Your Answer here """
+""" 
+The adversary has a 100% chance of correctly identifying b.
+Since Homomorphic encryption preserves operations under a mapping, 
+The adversary can compute Ca + Cb = Enc(Pa + Pb) and Cb + Cc = Enc(Pb + Pc).
+
+The adversary then compares the computations to C to see which one of the pairs is equal. 
+From there we can identify the two plaintexts that were summed and determine the value of b. 
+
+
+ """
 
 ###########################################################
 # TASK Q2 -- Answer questions regarding your implementation
@@ -228,4 +320,10 @@ def simulate_poll(votes):
 # that it yields an arbitrary result. Can those malicious actions 
 # be detected given your implementation?
 
-""" Your Answer here """
+""" 
+
+No public integrity checks are done
+
+
+
+ """
