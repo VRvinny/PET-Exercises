@@ -51,6 +51,23 @@ def proveKey(params, priv, pub):
     """  
     (G, g, hs, o) = params
     
+    
+    # W = g^w Witness
+    # pub = g^x
+    # priv = x
+    
+    # witness
+    w = o.random()
+    W = w * g 
+    
+    #challenge
+    c = to_challenge([g, W])
+    
+    # send r = w - cx
+    # bit iffy
+    r = (w - (c * priv)) % o
+    
+    
     ## YOUR CODE HERE:
     
     return (c, r)
@@ -61,6 +78,7 @@ def verifyKey(params, pub, proof):
     """
     (G, g, hs, o) = params
     c, r = proof
+    # g^ gw_prime == W == g^w
     gw_prime  = c * pub + r * g 
     return to_challenge([g, gw_prime]) == c
 
@@ -91,8 +109,35 @@ def proveCommitment(params, C, r, secrets):
     (G, g, (h0, h1, h2, h3), o) = params
     x0, x1, x2, x3 = secrets
 
-    ## YOUR CODE HERE:
+    # generate the witnesses
+    
+    w1 = o.random()
+    w2 = o.random()
+    w3 = o.random()
+    w4 = o.random()
+    w5 = o.random()
+    
+    #
+    W1 = w1 * g
+    W2 = w2 * h0
+    W3 = w3 * h1
+    W4 = w4 * h2
+    W5 = w5 * h3
+    
+    W = W1 + W2 + W3 + W4 + W5
+    
+    c = to_challenge([g, h0, h1, h2, h3, W ])
+    
+    # r = (w - (c * priv)) % o
+    # generate the responses
+    rr = (w1 - (c * r)) % o
+    r0 = (w2 - (c * x0)) % o
+    r1 = (w3 - (c * x1)) % o
+    r2 = (w4 - (c * x2)) % o
+    r3 = (w5 - (c * x3)) % o
 
+    responses = (r0, r1, r2, r3, rr)
+    
     return (c, responses)
 
 def verifyCommitments(params, C, proof):
@@ -102,6 +147,7 @@ def verifyCommitments(params, C, proof):
     c, responses = proof
     (r0, r1, r2, r3, rr) = responses
 
+    # C^c * h0^r0 *  h1^r1 * h2^r2 * h3^r3 * g^rr
     Cw_prime = c * C + r0 * h0 + r1 * h1 + r2 * h2 + r3 * h3 + rr * g
     c_prime = to_challenge([g, h0, h1, h2, h3, Cw_prime])
     return c_prime == c
@@ -124,6 +170,12 @@ def proveDLEquality(params, x, K, L):
     """ Generate a ZK proof that two public keys K, L have the same secret private key x, 
         as well as knowledge of this private key. """
     (G, g, (h0, h1, h2, h3), o) = params
+    
+    
+    # K, L are public keys
+    # K = g^ x      |  L= h^x = h0^x
+    
+    #w for witness
     w = o.random()
     Kw = w * g
     Lw = w * h0
@@ -137,10 +189,12 @@ def verifyDLEquality(params, K, L, proof):
     """ Return whether the verification of equality of two discrete logarithms succeeded. """ 
     (G, g, (h0, h1, h2, h3), o) = params
     c, r = proof
-
-    ## YOUR CODE HERE:
-
-    return # YOUR RETURN HERE
+    
+    # repeat what happens in task1
+    gw_prime = c * K + r * g 
+    hw_prime = c * L + r * h0
+    
+    return to_challenge([g, h0, gw_prime, hw_prime]) == c
 
 #####################################################
 # TASK 4 -- Prove correct encryption and knowledge of 
