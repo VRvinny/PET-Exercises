@@ -219,6 +219,12 @@ def proveEnc(params, pub, Ciphertext, k, m):
 
     ## YOUR CODE HERE:
 
+    w0 = o.random()
+    w1 = o.random()
+
+    rk = w0 - c*k
+    rm = w0 - c*k
+
     return (c, (rk, rm))
 
 def verifyEnc(params, pub, Ciphertext, proof):
@@ -252,17 +258,61 @@ def prove_x0eq10x1plus20(params, C, x0, x1, r):
     """ Prove C is a commitment to x0 and x1 and that x0 = 10 x1 + 20. """
     (G, g, (h0, h1, h2, h3), o) = params
 
-    ## YOUR CODE HERE:
+    '''
+	normally would do 
+	gen w1, w2 
+	calc W = g^w1 h ^w2
+	c = H(g,h,C, W)
+	r1 = w1 - Cv
+	r2 = w2 - Co
 
-    return ## YOUR RETURN HERE
+	send (c,r1,r2)
+
+	but with the existence of a relation we can do
+
+	W = g^w1* h1^w2 * h2^(10w2)
+
+
+
+    '''
+    w1 = o.random()
+    w2 = o.random()
+
+    W = w1*g + w2*h1 + 10*w2*h2 
+
+    c = to_challenge([g, h0, h1, W])
+
+
+    r1 = w1 - c*r 
+    r2 = w2 - c*x1
+
+    return (c, r1, r2) 
 
 def verify_x0eq10x1plus20(params, C, proof):
     """ Verify that proof of knowledge of C and x0 = 10 x1 + 20. """
     (G, g, (h0, h1, h2, h3), o) = params
 
-    ## YOUR CODE HERE:
+    '''
+    modify H(g,h,C, g^r1 h^r2 C^c)
 
-    return ## YOUR RETURN HERE
+    to 
+
+    H(g,h0,h1,)
+    H(g,h0,h1, (C * h0^-20)^c)
+    H(g,h0,h1, g^r1 * h1^r2 * h1^10r2 * (h0^-20 *C )^c )
+
+
+    #C = r * g + x1 * h1 + x0 * h0
+
+    # want W = w1*g + w2*h1 + 10*w2*h0 
+    converted to elliptic curves this becomes
+
+    '''
+    calcWit = r1*g + r2*h1 + r2*10*h0 + c*(-20*h0  + C)
+
+    calcChal = to_challenge([g,h0,h1,calcWit])
+
+    return c == calcChal
 
 #####################################################
 # TASK 6 -- (OPTIONAL) Prove that a ciphertext is either 0 or 1
