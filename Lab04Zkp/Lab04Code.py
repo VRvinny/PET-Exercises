@@ -218,8 +218,18 @@ def proveEnc(params, pub, Ciphertext, k, m):
     w0 = o.random()
     w1 = o.random()
 
-    rk = w0 - c*k
-    rm = w0 - c*k
+    
+    # rm = w0 - c*k
+    
+    wKey = w0 * g
+    wMessage = w1 * g 
+    # wMessage = 
+
+    c = to_challenge([g, h0, h1, wKey])
+
+    rk = w0 - c*k % o
+
+    rm = w1 - c*m % o
 
     return (c, (rk, rm))
 
@@ -229,7 +239,30 @@ def verifyEnc(params, pub, Ciphertext, proof):
     a, b = Ciphertext    
     (c, (rk, rm)) = proof
 
-    ## YOUR CODE HERE:
+    # (a,b) = (k*g, k*pub + m*h0)
+    # (a,b) = (k*g, k*x*g + m*h0)
+
+    # proof of knowledge of key and correct a
+
+    #g^rk * g^ck = g^w0
+    # cipher text is given meaning 
+    #g^rk * a^c = g^w0
+    #  
+    #rk*g + c*a = w0*g
+
+    responseKey = rk*g + c*a
+
+    # want g^w1
+    # g^w1 = g^rm *g^c^m
+
+    
+    responseMessage = rm*g + 
+
+
+    c = to_challenge([g, h0, h1, responseKey])
+
+
+
 
     return ## YOUR RETURN HERE
 
@@ -273,22 +306,21 @@ def prove_x0eq10x1plus20(params, C, x0, x1, r):
     '''
     w1 = o.random()
     w2 = o.random()
-    
-    W = w1*g + w2*h1 + 10*w2*h0
-    
+
+    W = w1*g + w2*h1 + 10*w2*h2 
+
     c = to_challenge([g, h0, h1, W])
-    
-    
-    r1 = w1 - c*r  %o
-    r2 = w2 - c*x1 %o
-    
+
+
+    r1 = w1 - c*r 
+    r2 = w2 - c*x1
 
     return (c, r1, r2) 
 
 def verify_x0eq10x1plus20(params, C, proof):
     """ Verify that proof of knowledge of C and x0 = 10 x1 + 20. """
     (G, g, (h0, h1, h2, h3), o) = params
-    
+
     '''
     modify H(g,h,C, g^r1 h^r2 C^c)
 
@@ -305,14 +337,11 @@ def verify_x0eq10x1plus20(params, C, proof):
     converted to elliptic curves this becomes
 
     '''
-    (c, r1, r2) = proof
-    
     calcWit = r1*g + r2*h1 + r2*10*h0 + c*(-20*h0  + C)
-    
-    calcChal = to_challenge([g,h0,h1,calcWit])
-    
-    return c == calcChal
 
+    calcChal = to_challenge([g,h0,h1,calcWit])
+
+    return c == calcChal
 
 #####################################################
 # TASK 6 -- (OPTIONAL) Prove that a ciphertext is either 0 or 1
@@ -341,7 +370,6 @@ def test_bin_correct():
 def test_bin_incorrect():
     """ Prove that incorrect proofs fail. """
     pass
-
 #####################################################
 # TASK Q1 - Answer the following question:
 #
