@@ -221,15 +221,19 @@ def proveEnc(params, pub, Ciphertext, k, m):
     
     # rm = w0 - c*k
     
-    wKey = w0 * g
-    wMessage = w1 * g 
-    # wMessage = 
+    # 2 witnesses used, one for the key and one for the witness
+    wKey = w0*g
+    wMessage = w0*pub + w1*h0
 
-    c = to_challenge([g, h0, h1, wKey])
-
-    rk = w0 - c*k % o
+    # stick the witnesses into the challenge hash
+    c = to_challenge([g, h0, wKey, wMessage])
     
-    rm = w1 - c*m % o
+    # the responses are always the same
+    # we can use this to determine what the witness/responses should be
+    # because we need to get rid of the c*k | c*m
+    
+    rk = (w0 - c*k) % o
+    rm = (w1 - c*m) % o
 
     return (c, (rk, rm))
 
@@ -242,29 +246,34 @@ def verifyEnc(params, pub, Ciphertext, proof):
     # (a,b) = (k*g, k*pub + m*h0)
     # (a,b) = (k*g, k*x*g + m*h0)
 
-    # proof of knowledge of key and correct a
-
+    # we first determine the response so that we can determine the witness
+    # want the response to only contain the w0,w1 and no challenge variable 
+    
+    # determining the response for the key
+    
     #g^rk * g^ck = g^w0
     # cipher text is given meaning 
     #g^rk * a^c = g^w0
     #  
     #rk*g + c*a = w0*g
+    # meaning the witness should be g^w0
 
     responseKey = rk*g + c*a
 
-    # want g^w1
-    # g^w1 = g^rm *g^c^m
-
+    # determining the response for the message
     
-    # responseMessage = rm*g + 
+    # note that b^c = h0^(m*c) * pub^(k*c)
+    # => b^c * h0^(rm) = h0^(m*c) * pub^(k*c) * h0^(w1 - c*m)
+    # => pub^(rk) * b^c * h0^(rm) = h0^(m*c)*pub^(k*c) *pub^(w0-kc) * h0^(w1-c*m)
+    # =>                          = g^(x^w0) *h0^w1
+    # =>                          = pub^w0 * h0^w1
+    # meaning the witness should be pub^w0 * h0^w1
+    
+
+    responseMessage = rm*h0 + c*b + rk*pub
 
 
-    c = to_challenge([g, h0, h1, responseKey])
-
-
-
-
-    return ## YOUR RETURN HERE
+    return c == to_challenge([g, h0, responseKey, responseMessage]) 
 
 
 #####################################################
