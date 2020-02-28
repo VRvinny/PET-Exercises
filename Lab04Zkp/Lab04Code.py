@@ -228,7 +228,7 @@ def proveEnc(params, pub, Ciphertext, k, m):
     c = to_challenge([g, h0, h1, wKey])
 
     rk = w0 - c*k % o
-
+    
     rm = w1 - c*m % o
 
     return (c, (rk, rm))
@@ -256,7 +256,7 @@ def verifyEnc(params, pub, Ciphertext, proof):
     # g^w1 = g^rm *g^c^m
 
     
-    responseMessage = rm*g + 
+    # responseMessage = rm*g + 
 
 
     c = to_challenge([g, h0, h1, responseKey])
@@ -307,13 +307,13 @@ def prove_x0eq10x1plus20(params, C, x0, x1, r):
     w1 = o.random()
     w2 = o.random()
 
-    W = w1*g + w2*h1 + 10*w2*h2 
+    W = w1*g + w2*h1 + 10*w2*h0
 
     c = to_challenge([g, h0, h1, W])
 
 
-    r1 = w1 - c*r 
-    r2 = w2 - c*x1
+    r1 = w1 - c*r %o
+    r2 = w2 - c*x1 %o
 
     return (c, r1, r2) 
 
@@ -337,6 +337,8 @@ def verify_x0eq10x1plus20(params, C, proof):
     converted to elliptic curves this becomes
 
     '''
+    (c, r1, r2) = proof
+    
     calcWit = r1*g + r2*h1 + r2*10*h0 + c*(-20*h0  + C)
 
     calcChal = to_challenge([g,h0,h1,calcWit])
