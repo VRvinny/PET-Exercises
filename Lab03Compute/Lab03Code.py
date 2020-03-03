@@ -223,18 +223,10 @@ def encode_vote(params, pub, vote):
 
     # return E(1), E(0) if voted for 0
     # return E(0), E(1) if voted for 1
-    
-    # avoid stupid errors
+
     v0 = encrypt(params, pub, 1-vote) # E(0)
     v1 = encrypt(params, pub, vote) # E(1)
-    
-    if vote == 0:
-        v0 = encrypt(params, pub, 1-vote) # E(0)
-        v1 = encrypt(params, pub, vote) # E(1)
-    elif vote == 1:
-       v0 = encrypt(params, pub, 1-vote) # E(0)
-       v1 = encrypt(params, pub, vote) # E(1)
-    
+
     return (v0, v1)
 
 def process_votes(params, pub, encrypted_votes):
@@ -301,12 +293,6 @@ def simulate_poll(votes):
 # Homomorphic addition? What are the security implications of this?
 
 """ 
-The adversary has a 100% chance of correctly identifying b.
-Since Homomorphic encryption preserves operations under a mapping, 
-The adversary can compute Ca + Cb = Enc(Pa + Pb) and Cb + Cc = Enc(Pb + Pc).
-
-The adversary then compares the computations to C to see which one of the pairs is equal. 
-From there we can identify the two plaintexts that were summed and determine the value of b. 
 
 
  """
