@@ -173,12 +173,12 @@ def proveDLEquality(params, x, K, L):
     
     #w for witness
     w = o.random()
-    Kw = w * g
-    Lw = w * h0
+    Kw = w*g
+    Lw = w*h0
 
-    c = to_challenge([g, h0, Kw, Lw])
+    c = to_challenge([g, h0, K, L, Kw, Lw])
 
-    r = (w - c * x) % o
+    r = (w - c*x) % o
     return (c, r)
 
 def verifyDLEquality(params, K, L, proof):
@@ -187,10 +187,10 @@ def verifyDLEquality(params, K, L, proof):
     c, r = proof
     
     # repeat what happens in task1
-    gw_prime = c * K + r * g 
-    hw_prime = c * L + r * h0
+    gw_prime = c*K + r*g 
+    hw_prime = c*L + r*h0
     
-    return to_challenge([g, h0, gw_prime, hw_prime]) == c
+    return to_challenge([g, h0, K, L, gw_prime, hw_prime]) == c
 
 #####################################################
 # TASK 4 -- Prove correct encryption and knowledge of 
@@ -218,15 +218,13 @@ def proveEnc(params, pub, Ciphertext, k, m):
     w0 = o.random()
     w1 = o.random()
 
-    
-    # rm = w0 - c*k
-    
+
     # 2 witnesses used, one for the key and one for the witness
     wKey = w0*g
     wMessage = w0*pub + w1*h0
 
     # stick the witnesses into the challenge hash
-    c = to_challenge([g, h0, wKey, wMessage])
+    c = to_challenge([g, h0, a,b, wKey, wMessage])
     
     # the responses are always the same
     # we can use this to determine what the witness/responses should be
@@ -273,7 +271,7 @@ def verifyEnc(params, pub, Ciphertext, proof):
     responseMessage = rm*h0 + c*b + rk*pub
 
 
-    return c == to_challenge([g, h0, responseKey, responseMessage]) 
+    return c == to_challenge([g, h0, a,b, responseKey, responseMessage]) 
 
 
 #####################################################
@@ -321,8 +319,8 @@ def prove_x0eq10x1plus20(params, C, x0, x1, r):
     c = to_challenge([g, h0, h1, W])
 
 
-    r1 = w1 - c*r %o
-    r2 = w2 - c*x1 %o
+    r1 = (w1 - c*r) % o
+    r2 = (w2 - c*x1) % o
 
     return (c, r1, r2) 
 
@@ -348,7 +346,7 @@ def verify_x0eq10x1plus20(params, C, proof):
     '''
     (c, r1, r2) = proof
     
-    calcWit = r1*g + r2*h1 + r2*10*h0 + c*(-20*h0  + C)
+    calcWit = r1*g + r2*h1 + r2*10*h0 + c*(-20*h0 + C)
 
     calcChal = to_challenge([g,h0,h1,calcWit])
 
